@@ -1,0 +1,4 @@
+Error response from daemon: No such container: frontend-compose
+Error response from daemon: No such container: backend-compose
+Error response from daemon: No such container: nginx-compose
+Error response from daemon: No such container: dd-mongo-compose
