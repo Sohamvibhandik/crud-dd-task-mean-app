@@ -70,6 +70,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Ensure ssh client is available (install if needed) and debug
+        run: |
+          echo "Checking ssh/scp availability..."
+          if ! command -v ssh >/dev/null 2>&1; then
+            echo "ssh not found — installing openssh-client..."
+            sudo apt-get update -y
+            sudo apt-get install -y openssh-client
+          fi
+          echo "ssh version:"
+          ssh -V || true
+          echo "which ssh/scp:"
+          which ssh || true
+          which scp || true
+
       - name: Start ssh-agent and add private key
         uses: webfactory/ssh-agent@v0.9.0
         with:
@@ -80,11 +94,13 @@ jobs:
           mkdir -p deploy
           cp docker-compose.yml deploy/docker-compose.yml || true
           cp nginx/nginx.conf deploy/nginx.conf || true
+          echo "Copying files to server..."
           scp -o StrictHostKeyChecking=no deploy/docker-compose.yml ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:~/deploy/docker-compose.yml
           scp -o StrictHostKeyChecking=no deploy/nginx.conf ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:~/deploy/nginx.conf
 
       - name: Pull new images & restart stack on server
         run: |
+          echo "Running remote commands..."
           ssh -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
             set -e
             cd ~/deploy || mkdir -p ~/deploy && cd ~/deploy
