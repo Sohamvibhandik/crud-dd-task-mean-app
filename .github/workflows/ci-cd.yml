@@ -45,6 +45,8 @@ jobs:
           tags: |
             ${{ env.BACKEND_IMAGE }}:latest
             ${{ env.BACKEND_IMAGE }}:sha-${{ steps.vars.outputs.SHORT_SHA }}
+          cache-from: type=registry,ref=${{ env.BACKEND_IMAGE }}:latest
+          cache-to: type=inline
 
       - name: Set backend_tag output
         id: backend_tag
@@ -59,15 +61,18 @@ jobs:
           tags: |
             ${{ env.FRONTEND_IMAGE }}:latest
             ${{ env.FRONTEND_IMAGE }}:sha-${{ steps.vars.outputs.SHORT_SHA }}
+          cache-from: type=registry,ref=${{ env.FRONTEND_IMAGE }}:latest
+          cache-to: type=inline
 
       - name: Set frontend_tag output
         id: frontend_tag
         run: echo "::set-output name=tag::sha-${{ steps.vars.outputs.SHORT_SHA }}"
 
-    deploy:
+  deploy:
     name: Deploy to VM (pull & restart)
     needs: build-and-push
     runs-on: ubuntu-latest
+    # define VM_ENABLED based on whether required secrets exist (this expression is evaluated by GH Actions)
     env:
       VM_ENABLED: ${{ (secrets.SSH_PRIVATE_KEY != '' && secrets.VM_HOST != '' && secrets.VM_USER != '') && 'true' || 'false' }}
     if: ${{ env.VM_ENABLED == 'true' }}
@@ -80,7 +85,7 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Copy docker-compose and nginx config to server
+      - name: Prepare deploy files and copy to server
         run: |
           mkdir -p deploy
           cp docker-compose.yml deploy/docker-compose.yml || true
