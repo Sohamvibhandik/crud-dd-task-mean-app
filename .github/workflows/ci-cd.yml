@@ -85,7 +85,7 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-            - name: Prepare deploy files and copy to server
+      - name: Prepare deploy files and copy to server
         run: |
           echo "Workspace: $GITHUB_WORKSPACE"
           echo "Listing repo root:"
@@ -128,4 +128,3 @@ jobs:
             docker system prune -f
             docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
           EOF
-
