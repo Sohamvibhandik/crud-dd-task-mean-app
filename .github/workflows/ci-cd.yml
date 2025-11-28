@@ -85,11 +85,34 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Prepare deploy files and copy to server
+            - name: Prepare deploy files and copy to server
         run: |
+          echo "Workspace: $GITHUB_WORKSPACE"
+          echo "Listing repo root:"
+          ls -la "$GITHUB_WORKSPACE" || true
+          echo "Listing repo tree (depth 2):"
+          ls -la "$GITHUB_WORKSPACE"/* || true
+
+          # Validate files exist in repo root
+          if [ ! -f "$GITHUB_WORKSPACE/docker-compose.yml" ]; then
+            echo "ERROR: docker-compose.yml not found in repo root: $GITHUB_WORKSPACE"
+            echo "Files in workspace:"
+            ls -la "$GITHUB_WORKSPACE"
+            exit 1
+          fi
+
+          if [ ! -f "$GITHUB_WORKSPACE/nginx/nginx.conf" ]; then
+            echo "ERROR: nginx/nginx.conf not found in repo root: $GITHUB_WORKSPACE/nginx"
+            ls -la "$GITHUB_WORKSPACE/nginx" || true
+            exit 1
+          fi
+
           mkdir -p deploy
-          cp docker-compose.yml deploy/docker-compose.yml || true
-          cp nginx/nginx.conf deploy/nginx.conf || true
+          cp "$GITHUB_WORKSPACE/docker-compose.yml" deploy/docker-compose.yml
+          cp "$GITHUB_WORKSPACE/nginx/nginx.conf" deploy/nginx.conf
+
+          echo "Files prepared:"
+          ls -la deploy
           echo "Copying files to server..."
           scp -o StrictHostKeyChecking=no deploy/docker-compose.yml ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:~/deploy/docker-compose.yml
           scp -o StrictHostKeyChecking=no deploy/nginx.conf ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:~/deploy/nginx.conf
