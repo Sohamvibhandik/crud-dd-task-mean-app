@@ -1,47 +1,46 @@
-version: "3.8"
+﻿version: "3.8"
 
 services:
-  mongo:
+  dd-mongo:
     image: mongo:6.0
-    container_name: dd-mongo-compose
-    restart: unless-stopped
+    container_name: dd-mongo
     volumes:
       - mongo_data:/data/db
-    environment:
-      MONGO_INITDB_DATABASE: dd_db
+    restart: unless-stopped
 
   backend:
-    image: sohams-backend-local:latest
-    container_name: backend-compose
-    restart: unless-stopped
-    depends_on:
-      - mongo
+    image: sohamvibhandik/crud-mean-backend:latest
+    container_name: backend
     environment:
-      - MONGO_URI=mongodb://mongo:27017/dd_db
-      - PORT=8080
-    expose:
-      - "8080"
+      - MONGO_URI=mongodb://dd-mongo:27017/dd_db
+    depends_on:
+      - dd-mongo
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   frontend:
-    image: sohams-frontend-local:latest
-    container_name: frontend-compose
-    restart: unless-stopped
+    image: sohamvibhandik/crud-mean-frontend:latest
+    container_name: frontend
     depends_on:
       - backend
-    expose:
-      - "80"
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
   nginx:
-    image: nginx:stable-alpine
-    container_name: nginx-compose
-    restart: unless-stopped
-    depends_on:
-      - frontend
-      - backend
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    image: nginx:stable
+    container_name: nginx
     ports:
       - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
 
 volumes:
   mongo_data:
+
