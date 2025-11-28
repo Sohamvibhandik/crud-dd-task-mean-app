@@ -1,16 +1,13 @@
 # frontend/Dockerfile
-# 1) Builder stage: build Angular app
-FROM node:18-alpine AS builder
+FROM node:18 AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-# build into dist/angular-15-crud
-RUN npm run build -- --configuration=production
+RUN npm run build --configuration=production
 
-# 2) Serve with nginx
 FROM nginx:stable-alpine
-# copy built files to nginx html dir (note the dist subfolder name)
-COPY --from=builder /app/dist/angular-15-crud /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# copy built site
+COPY --from=build /app/dist/angular-15-crud /usr/share/nginx/html
+# copy custom nginx config (overrides default)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
