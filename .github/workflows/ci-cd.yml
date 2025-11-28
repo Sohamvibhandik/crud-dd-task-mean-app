@@ -1,4 +1,4 @@
-﻿name: CI/CD - Build, Push, Deploy
+﻿name: CI - Build & Push
 
 on:
   push:
@@ -54,78 +54,3 @@ jobs:
             ${{ env.FRONTEND_IMAGE }}:sha-${{ steps.vars.outputs.SHORT_SHA }}
           cache-from: type=registry,ref=${{ env.FRONTEND_IMAGE }}:latest
           cache-to: type=inline
-
-  deploy:
-    name: Deploy to VM (pull & restart)
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check for VM secrets and skip if missing
-        run: |
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] || [ -z "${{ secrets.VM_HOST }}" ] || [ -z "${{ secrets.VM_USER }}" ]; then
-            echo "VM deployment secrets not configured. Skipping deploy step."
-            exit 0
-          fi
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Ensure ssh client is available (install if needed) and debug
-        run: |
-          echo "PATH=$PATH"
-          echo "Which binaries:"
-          which ssh || true
-          which scp || true
-          ls -l /usr/bin/ssh /usr/bin/scp || true
-          echo "---- end debug ----"
-
-      - name: Start ssh-agent and add private key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Prepare deploy files and copy to server
-        run: |
-          echo "Workspace: $GITHUB_WORKSPACE"
-          echo "Listing repo root:"
-          ls -la "$GITHUB_WORKSPACE" || true
-          echo "Listing repo tree (depth 2):"
-          ls -la "$GITHUB_WORKSPACE"/* || true
-
-          # Validate files exist in repo root
-          if [ ! -f "$GITHUB_WORKSPACE/docker-compose.yml" ]; then
-            echo "ERROR: docker-compose.yml not found in repo root: $GITHUB_WORKSPACE"
-            echo "Files in workspace:"
-            ls -la "$GITHUB_WORKSPACE"
-            exit 1
-          fi
-
-          if [ ! -f "$GITHUB_WORKSPACE/nginx/nginx.conf" ]; then
-            echo "ERROR: nginx/nginx.conf not found in repo root: $GITHUB_WORKSPACE/nginx"
-            ls -la "$GITHUB_WORKSPACE/nginx" || true
-            exit 1
-          fi
-
-          mkdir -p deploy
-          cp "$GITHUB_WORKSPACE/docker-compose.yml" deploy/docker-compose.yml
-          cp "$GITHUB_WORKSPACE/nginx/nginx.conf" deploy/nginx.conf
-
-          echo "Files prepared:"
-          ls -la deploy
-          echo "Creating deploy folder on server..."
-          ssh -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "mkdir -p ~/deploy && chmod 700 ~/deploy"
-          echo "Copying files to server..."
-          scp -o StrictHostKeyChecking=no deploy/docker-compose.yml ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:~/deploy/docker-compose.yml
-          scp -o StrictHostKeyChecking=no deploy/nginx.conf ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:~/deploy/nginx.conf
-
-      - name: Pull new images & restart stack on server
-        run: |
-          echo "Running remote commands..."
-          ssh -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
-            set -e
-            cd ~/deploy || mkdir -p ~/deploy && cd ~/deploy
-            docker compose pull
-            docker compose up -d --remove-orphans
-            docker system prune -f
-            docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
-          EOF
