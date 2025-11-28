@@ -72,17 +72,13 @@ jobs:
 
       - name: Ensure ssh client is available (install if needed) and debug
         run: |
-          echo "Checking ssh/scp availability..."
-          if ! command -v ssh >/dev/null 2>&1; then
-            echo "ssh not found — installing openssh-client..."
-            sudo apt-get update -y
-            sudo apt-get install -y openssh-client
-          fi
-          echo "ssh version:"
-          ssh -V || true
-          echo "which ssh/scp:"
+          echo "PATH=$PATH"
+          echo "Which binaries:"
           which ssh || true
           which scp || true
+          ls -l /usr/bin/ssh /usr/bin/scp || true
+          env | sort
+          echo "---- end debug ----"
 
       - name: Start ssh-agent and add private key
         uses: webfactory/ssh-agent@v0.9.0
@@ -109,3 +105,4 @@ jobs:
             docker system prune -f
             docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
           EOF
+
