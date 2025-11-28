@@ -1,0 +1,3 @@
+"SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)" 
+"SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)" 
+"SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)" 
